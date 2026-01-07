@@ -1,3 +1,3 @@
 <Solution>
-  <Project Path="WebApplication3/MultiTenantApp.csproj" />
+  <Project Path="MultiTenantApp/MultiTenantApp.csproj" />
 </Solution>
