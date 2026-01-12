@@ -5,22 +5,24 @@ namespace MultiTenantApp.Data;
 
 public class AppDbContext : DbContext
 {
-    public string TenantId { get; }
+    private readonly TenantContext _tenant;
 
     public AppDbContext(
         DbContextOptions<AppDbContext> options,
-        TenantContext tenantContext)
+        TenantContext tenant)
         : base(options)
     {
-        TenantId = tenantContext.TenantId;
+        _tenant = tenant;
     }
 
-    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Order> Orders => Set<Order>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Order>()
-            .HasQueryFilter(o => o.TenantId == TenantId);
+        if (!_tenant.IsDedicated)
+        {
+            modelBuilder.Entity<Order>()
+                .HasQueryFilter(o => o.TenantId == _tenant.TenantId);
+        }
     }
 }

@@ -5,41 +5,48 @@ namespace MultiTenantApp.Tenancy;
 
 public class HybridTenantResolver : ITenantResolver
 {
-    private readonly AppDbContext _db;
+    private readonly TenantStoreDbContext _store;
     private const string AppRootDomain = "myapp.com";
+    private Tenant? tenant;
 
-    public HybridTenantResolver(AppDbContext db)
+    public HybridTenantResolver(TenantStoreDbContext store)
     {
-        _db = db;
+        _store = store;
     }
 
-    public string? ResolveTenant(HttpContext context)
+    public TenantContext? Resolve(HttpContext context)
     {
         var host = context.Request.Host.Host.ToLowerInvariant();
 
-        // 1️⃣ Try custom domain
-        var tenant = _db.Tenants
-            .AsNoTracking()
-            .FirstOrDefault(t => t.Domain == host);
+        if (host.StartsWith("www."))
+            host = host.Substring(4);
+        
 
-        if (tenant != null)
-            return tenant.TenantId;
+        tenant = _store.Tenants
+          .AsNoTracking()
+          .FirstOrDefault(t => t.Domain == host);
 
-        // 2️⃣ Fallback to subdomain
+
         if (host.EndsWith(AppRootDomain))
         {
-            var parts = host.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            var parts = host.Split('.');
+            if (parts.Length < 3)
+                return null;
 
-            if (parts.Length >= 3)
-            {
-                var subdomain = parts[0];
+            var tenantId = parts[0];
 
-                if (subdomain != "www" && subdomain != "app")
-                    return subdomain; // tenant id
-            }
+            tenant = _store.Tenants
+               .FirstOrDefault(t => t.TenantId == tenantId);
         }
 
-        // 3️⃣ Tenant not found
-        return null;
+        if (tenant == null)
+            return null;
+
+        return new TenantContext
+        {
+            TenantId = tenant.TenantId,
+            IsDedicated = tenant.IsDedicated,
+            ConnectionString = tenant.ConnectionString
+        };
     }
 }

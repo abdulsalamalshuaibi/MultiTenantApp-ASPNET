@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using MultiTenantApp.Tenancy;
+﻿using MultiTenantApp.Tenancy;
 
 namespace MultiTenantApp.Middleware;
 
@@ -14,19 +13,20 @@ public class TenantMiddleware
 
     public async Task InvokeAsync(
         HttpContext context,
-        ITenantResolver tenantResolver,
+        ITenantResolver resolver,
         TenantContext tenantContext)
     {
-        var tenantId = tenantResolver.ResolveTenant(context);
+        var resolved = resolver.Resolve(context);
 
-        if (string.IsNullOrWhiteSpace(tenantId))
+        if (resolved == null)
         {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await context.Response.WriteAsync("Tenant not found");
+            context.Response.StatusCode = 400;
+            await context.Response.WriteAsync("Tenant not resolved");
             return;
         }
 
-        tenantContext.TenantId = tenantId;
+        tenantContext.TenantId = resolved.TenantId;
+        tenantContext.IsDedicated = resolved.IsDedicated;
 
         await _next(context);
     }

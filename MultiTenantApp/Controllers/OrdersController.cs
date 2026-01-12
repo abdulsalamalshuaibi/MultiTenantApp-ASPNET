@@ -1,44 +1,31 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Internal;
 using MultiTenantApp.Data;
 using MultiTenantApp.Tenancy;
-
-namespace MultiTenantApp.Controllers;
 
 [ApiController]
 [Route("api/orders")]
 public class OrdersController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    private readonly TenantContext _tenantContext;
+    private readonly DbContextFactory _factory;
+    private readonly TenantContext _tenant;
 
-    public OrdersController(AppDbContext db, TenantContext tenantContext)
+    public OrdersController(DbContextFactory factory, TenantContext tenant)
     {
-        _db = db;
-        _tenantContext = tenantContext;
+        _factory = factory;
+        _tenant = tenant;
     }
 
     [HttpGet]
     public IActionResult Get()
     {
-        var orders = _db.Orders.ToList();
+        using var db = _factory.CreateDbContext(_tenant);
+
         return Ok(new
         {
-            Tenant = _tenantContext.TenantId,
-            Data = orders
+            Tenant = _tenant.TenantId,
+            Mode = _tenant.IsDedicated ? "Dedicated DB" : "Shared DB",
+            Orders = db.Orders.ToList()
         });
     }
-
-    [HttpPost]
-    public IActionResult Create([FromBody] CreateOrderRequest request)
-    {
-        _db.Orders.Add(new Order
-        {
-            ProductName = request.ProductName,
-            TenantId = _tenantContext.TenantId
-        });
-
-        _db.SaveChanges();
-        return Ok();
-    }
-
 }

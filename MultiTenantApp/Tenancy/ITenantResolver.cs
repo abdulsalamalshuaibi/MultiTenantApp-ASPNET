@@ -1,8 +1,8 @@
-﻿namespace MultiTenantApp.Tenancy
-{
-    public interface ITenantResolver
-    {
-        string? ResolveTenant(HttpContext context);
+﻿using Microsoft.AspNetCore.Http;
 
-    }
+namespace MultiTenantApp.Tenancy;
+
+public interface ITenantResolver
+{
+    TenantContext? Resolve(HttpContext context);
 }
